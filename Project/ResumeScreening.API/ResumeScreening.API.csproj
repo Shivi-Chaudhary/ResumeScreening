@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ResumeScreening.API</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Entity Framework Core + SQL Server (9.x matches net9.0; EF Core 10 requires net10.0) -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.11">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
+    <!-- JWT Authentication -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.9.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.9.0" />
+
+    <!-- BCrypt for password hashing -->
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
+    <!-- Azure Blob Storage -->
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
+
+    <!-- PDF text extraction: use PdfPig metapackage (UglyToad.PdfPig + satellites resolve inconsistently on nuget.org → runtime missing Core 0.1.9) -->
+    <PackageReference Include="PdfPig" Version="0.1.14" />
+
+    <!-- ML.NET for scoring engine (Week 4) -->
+    <PackageReference Include="Microsoft.ML" Version="3.0.1" />
+
+    <!-- Excel export -->
+    <PackageReference Include="EPPlus" Version="7.0.9" />
+
+    <!-- Swagger / OpenAPI -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+</Project>

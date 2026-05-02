@@ -1,0 +1,32 @@
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(61, 139, 253, 0.18), transparent);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.5rem;
+  }
+  .hint {
+    margin: 0 0 1.25rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .full {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .footer {
+    margin: 1.25rem 0 0;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+}

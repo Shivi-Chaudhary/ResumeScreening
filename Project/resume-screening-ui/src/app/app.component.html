@@ -1,0 +1,21 @@
+@if (auth.isLoggedIn()) {
+  <header class="top">
+    <div class="container inner">
+      <a routerLink="/jobs" class="brand">Resume Screening</a>
+      <nav>
+        <a routerLink="/jobs" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">Jobs</a>
+        @if (auth.isHrAdmin()) {
+          <a routerLink="/jobs/new" routerLinkActive="active">New job</a>
+        }
+      </nav>
+      <div class="user">
+        <span class="name">{{ auth.getUser()?.fullName }}</span>
+        <span class="role">{{ auth.getUser()?.role }}</span>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="auth.logout()">Sign out</button>
+      </div>
+    </div>
+  </header>
+}
+<main [class.with-nav]="auth.isLoggedIn()">
+  <router-outlet />
+</main>

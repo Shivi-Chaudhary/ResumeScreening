@@ -1,0 +1,218 @@
+<div class="container">
+  <a routerLink="/jobs" class="back">← All jobs</a>
+
+  @if (loading()) {
+    <p class="muted">Loading…</p>
+  } @else if (error()) {
+    <div class="alert-error">{{ error() }}</div>
+  } @else {
+    @if (job(); as j) {
+    <header class="detail-head">
+      <div>
+        <h1 class="page-title">{{ j.title }}</h1>
+        <p class="page-sub">
+          <span class="badge" [class.badge-active]="j.status === 'Active'" [class.badge-closed]="j.status === 'Closed'">{{ j.status }}</span>
+          · {{ j.createdByFullName }} · {{ j.createdAt | date: 'medium' }}
+        </p>
+      </div>
+      @if (auth.isHrAdmin()) {
+        <button type="button" class="btn btn-danger" (click)="removeJob()" [disabled]="deleting">
+          {{ deleting ? 'Deleting…' : 'Delete job' }}
+        </button>
+      }
+    </header>
+
+    <section class="card block">
+      <h2>Description</h2>
+      <p class="body-text">{{ j.description }}</p>
+    </section>
+
+    <section class="card block">
+      <h2>Job description file</h2>
+      @if (j.jdFileUrl) {
+        <p><a [href]="j.jdFileUrl" target="_blank" rel="noopener">Open attachment</a></p>
+      } @else {
+        <p class="muted">No file uploaded.</p>
+      }
+      @if (j.jdExtractedText) {
+        <h3>Extracted text (PDF)</h3>
+        <pre class="extracted">{{ j.jdExtractedText }}</pre>
+      }
+      @if (auth.isHrAdmin()) {
+        <div class="jd-upload">
+          <label class="btn btn-ghost file-label">
+            {{ jdUploading ? 'Uploading…' : 'Replace JD file' }}
+            <input type="file" accept=".pdf,.doc,.docx,.txt" [disabled]="jdUploading" (change)="onJdFile($event)" />
+          </label>
+          @if (jdMsg()) {
+            <span class="inline-msg">{{ jdMsg() }}</span>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="card block resumes-block">
+      <h2>Candidate resumes</h2>
+      @if (auth.isHrAdmin()) {
+        <p class="muted small">PDF only. You can upload up to 20 files per batch; text is extracted automatically when possible.</p>
+      }
+      @if (auth.isViewer()) {
+        <p class="muted small">You only see your own submission for this job. Upload or replace your PDF below.</p>
+        <div class="viewer-resume-upload">
+          <label class="btn btn-ghost file-label">
+            {{ myResumeBusy() ? 'Uploading…' : resumes().length ? 'Replace my resume' : 'Upload my resume' }}
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              [disabled]="myResumeBusy()"
+              (change)="onMyResumeFile($event)"
+            />
+          </label>
+          @if (resumeMsg()) {
+            <p
+              class="resume-msg"
+              [class.resume-msg-error]="
+                resumeMsg().includes('failed') ||
+                resumeMsg().includes('Upload failed') ||
+                resumeMsg().includes('Please choose')
+              "
+            >
+              {{ resumeMsg() }}
+            </p>
+          }
+        </div>
+      }
+
+      @if (auth.isHrAdmin()) {
+        <div
+          class="drop-zone"
+          (dragover)="onDragOver($event)"
+          (drop)="onResumeDrop($event)"
+          [class.drop-zone-busy]="resumeUploading()"
+        >
+          <p class="drop-zone-title">Drop PDFs here or browse</p>
+          <label class="btn btn-ghost file-label">
+            Choose PDFs
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              multiple
+              [disabled]="resumeUploading()"
+              (change)="onResumeInput($event)"
+            />
+          </label>
+          @if (resumePickHint()) {
+            <p class="pick-hint">{{ resumePickHint() }}</p>
+          }
+          @if (selectedResumeFiles.length > 0) {
+            <ul class="queued-list">
+              @for (f of selectedResumeFiles; track f.name + f.size + $index) {
+                <li>
+                  <span class="queued-name">{{ f.name }}</span>
+                  <button type="button" class="btn-link" (click)="removeQueuedResume($index)" [disabled]="resumeUploading()">Remove</button>
+                </li>
+              }
+            </ul>
+            <div class="queue-actions">
+              <button type="button" class="btn btn-primary" [disabled]="resumeUploading()" (click)="uploadQueuedResumes()">
+                {{ resumeUploading() ? 'Uploading…' : 'Upload ' + selectedResumeFiles.length + ' file(s)' }}
+              </button>
+              <button type="button" class="btn btn-ghost" [disabled]="resumeUploading()" (click)="clearResumeQueue()">Clear</button>
+            </div>
+          }
+          @if (resumeMsg()) {
+            <p class="resume-msg" [class.resume-msg-error]="resumeMsg().includes('failed')">{{ resumeMsg() }}</p>
+          }
+        </div>
+      }
+
+      @if (resumesLoading()) {
+        <p class="muted">Loading resumes…</p>
+      } @else if (resumes().length === 0) {
+        <p class="muted">No resumes uploaded for this job yet.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="resume-table">
+            <thead>
+              <tr>
+                <th>Candidate</th>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Uploaded</th>
+                <th>Text</th>
+                <th>PDF</th>
+                @if (auth.isHrAdmin() || auth.isViewer()) {
+                  <th>Actions</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of resumes(); track r.id) {
+                <tr>
+                  <td>{{ r.candidateName }}</td>
+                  <td>{{ r.candidateEmail ?? '—' }}</td>
+                  <td>
+                    <span
+                      class="badge"
+                      [class.badge-active]="r.status === 'Extracted'"
+                      [class.badge-pending]="r.status === 'Pending'"
+                      [class.badge-closed]="r.status !== 'Extracted' && r.status !== 'Pending'"
+                      >{{ r.status }}</span
+                    >
+                  </td>
+                  <td>{{ r.uploadedAt | date: 'short' }}</td>
+                  <td>{{ r.hasExtractedText ? 'Yes' : 'No' }}</td>
+                  <td>
+                    <a [href]="r.fileUrl" target="_blank" rel="noopener">Open</a>
+                  </td>
+                  @if (auth.isHrAdmin() || auth.isViewer()) {
+                    <td>
+                      <button
+                        type="button"
+                        class="resume-delete"
+                        [disabled]="deletingResumeId() === r.id"
+                        (click)="deleteResumeRow(r)"
+                      >
+                        {{ deletingResumeId() === r.id ? 'Removing…' : 'Delete' }}
+                      </button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    @if (auth.isHrAdmin()) {
+      <section class="card block">
+        <h2>Edit job</h2>
+        @if (saveMsg()) {
+          <p class="inline-msg">{{ saveMsg() }}</p>
+        }
+        <form [formGroup]="editForm" (ngSubmit)="save()">
+          <div class="field">
+            <label for="etitle">Title</label>
+            <input id="etitle" type="text" formControlName="title" />
+          </div>
+          <div class="field">
+            <label for="edesc">Description</label>
+            <textarea id="edesc" formControlName="description" rows="5"></textarea>
+          </div>
+          <div class="field">
+            <label for="estatus">Status</label>
+            <select id="estatus" formControlName="status">
+              <option value="Active">Active</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" [disabled]="saving || editForm.invalid">
+            {{ saving ? 'Saving…' : 'Save changes' }}
+          </button>
+        </form>
+      </section>
+    }
+    }
+  }
+</div>

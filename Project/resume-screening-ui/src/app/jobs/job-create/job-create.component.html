@@ -1,0 +1,32 @@
+<div class="container narrow">
+  <a routerLink="/jobs" class="back">← Back to jobs</a>
+  <h1 class="page-title">New job posting</h1>
+  <p class="page-sub">Add a title, description, and optionally attach a job description file (PDF, Word, or text).</p>
+
+  @if (errorMsg) {
+    <div class="alert-error">{{ errorMsg }}</div>
+  }
+
+  <div class="card form-card">
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field">
+        <label for="title">Title</label>
+        <input id="title" type="text" formControlName="title" />
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" formControlName="description" rows="6"></textarea>
+      </div>
+      <div class="field">
+        <label for="jd">Job description file (optional)</label>
+        <input id="jd" type="file" accept=".pdf,.doc,.docx,.txt" (change)="onFile($event)" />
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" [disabled]="loading">
+          {{ loading ? 'Creating…' : 'Create job' }}
+        </button>
+        <a routerLink="/jobs" class="btn btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>

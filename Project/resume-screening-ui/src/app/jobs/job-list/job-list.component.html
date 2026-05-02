@@ -1,0 +1,53 @@
+<div class="container">
+  <div class="head">
+    <div>
+      <h1 class="page-title">Job postings</h1>
+      <p class="page-sub">Open a job to view the description and JD attachment.</p>
+    </div>
+    @if (auth.isHrAdmin()) {
+      <a routerLink="/jobs/new" class="btn btn-primary">New job</a>
+    }
+  </div>
+
+  <div class="toolbar card">
+    <label class="filter">
+      <span>Status</span>
+      <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
+        <option value="All">All</option>
+        <option value="Active">Active</option>
+        <option value="Closed">Closed</option>
+      </select>
+    </label>
+  </div>
+
+  @if (error()) {
+    <div class="alert-error">{{ error() }}</div>
+  }
+
+  @if (loading()) {
+    <p class="muted">Loading jobs…</p>
+  } @else if (jobs().length === 0) {
+    <p class="muted">No jobs yet. @if (auth.isHrAdmin()) { Create one to get started. }</p>
+  } @else {
+    <ul class="job-grid">
+      @for (j of jobs(); track j.id) {
+        <li>
+          <a [routerLink]="['/jobs', j.id]" class="job-card card">
+            <div class="job-card-top">
+              <h2>{{ j.title }}</h2>
+              <span class="badge" [class.badge-active]="j.status === 'Active'" [class.badge-closed]="j.status === 'Closed'">
+                {{ j.status }}
+              </span>
+            </div>
+            <p class="meta">
+              {{ j.createdByFullName }} · {{ j.createdAt | date: 'mediumDate' }}
+              @if (j.hasJdFile) {
+                <span class="jd-pill">JD file</span>
+              }
+            </p>
+          </a>
+        </li>
+      }
+    </ul>
+  }
+</div>

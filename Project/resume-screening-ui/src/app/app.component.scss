@@ -1,0 +1,71 @@
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(15, 20, 25, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 56px;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--text);
+  &:hover {
+    color: var(--accent);
+  }
+}
+
+nav {
+  display: flex;
+  gap: 0.25rem;
+  flex: 1;
+  a {
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.9rem;
+    &:hover {
+      color: var(--text);
+      background: var(--surface-2);
+    }
+    &.active {
+      color: var(--accent);
+      background: rgba(61, 139, 253, 0.12);
+    }
+  }
+}
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  .name {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .role {
+    color: var(--muted);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+  }
+}
+
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+main.with-nav {
+  padding: 1.75rem 0 3rem;
+}
