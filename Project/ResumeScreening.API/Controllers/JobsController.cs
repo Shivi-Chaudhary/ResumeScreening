@@ -73,7 +73,7 @@ namespace ResumeScreening.API.Controllers
                 .FirstOrDefaultAsync(j => j.Id == id);
 
             if (job == null)
-                return NotFound(new { message = "Job not found!" });
+                return NotFound(new { message = "Job not found." });
 
             return Ok(MapToResponse(job));
         }
