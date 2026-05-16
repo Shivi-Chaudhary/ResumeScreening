@@ -27,6 +27,178 @@
   }
 }
 
+// ── Tab bar ────────────────────────────────────────────────────────────
+.tab-bar {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  position: relative;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  transition: color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  &:hover {
+    color: var(--text);
+    background: rgba(139, 92, 246, 0.06);
+  }
+
+  &.tab-active {
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.1);
+
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: #a78bfa;
+      border-radius: 2px 2px 0 0;
+    }
+  }
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 5px;
+}
+
+// ── HR Decisions tab ───────────────────────────────────────────────────
+.decisions-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+
+  &.stat-shortlisted { background: rgba(34, 197, 94, 0.06); border-color: rgba(34, 197, 94, 0.2); }
+  &.stat-underreview { background: rgba(251, 191, 36, 0.06); border-color: rgba(251, 191, 36, 0.2); }
+  &.stat-pending     { background: rgba(148, 163, 184, 0.06); border-color: rgba(148, 163, 184, 0.2); }
+  &.stat-rejected    { background: rgba(239, 68, 68, 0.06); border-color: rgba(239, 68, 68, 0.2); }
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.3rem;
+  font-weight: 500;
+}
+
+.decision-group {
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.decision-count {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.decision-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.decision-card {
+  padding: 0.85rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
+  }
+}
+
+.dc-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.dc-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.score-sm {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.dc-email {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.dc-notes {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 640px) {
+  .decisions-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .tab-bar {
+    overflow-x: auto;
+  }
+}
+
 .block {
   margin-bottom: 1.25rem;
   h2 {
@@ -621,6 +793,52 @@
 
 .viewer-resume-upload {
   margin-bottom: 1rem;
+}
+
+// ── Screening method toggle ────────────────────────────────────────────
+.screening-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.method-toggle {
+  display: flex;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.method-btn {
+  padding: 0.4rem 0.9rem;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
+  &:hover:not(.method-active) {
+    background: rgba(139, 92, 246, 0.06);
+  }
+
+  &.method-active {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    font-weight: 600;
+  }
+
+  &.method-btn-ai.method-active {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+  }
+}
+
+.method-hint {
+  margin: 0.5rem 0 0;
 }
 
 // ── Rankings header + export ────────────────────────────────────────────

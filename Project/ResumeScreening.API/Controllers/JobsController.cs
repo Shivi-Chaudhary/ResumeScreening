@@ -21,6 +21,7 @@ namespace ResumeScreening.API.Controllers
         private readonly AppDbContext _db;
         private readonly IBlobService _blobs;
         private readonly ScoringService _scoring;
+        private readonly AiScoringService _aiScoring;
         private readonly ILogger<JobsController> _logger;
 
         private static readonly HashSet<string> AllowedJdExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -32,11 +33,12 @@ namespace ResumeScreening.API.Controllers
             ".pdf"
         };
 
-        public JobsController(AppDbContext db, IBlobService blobs, ScoringService scoring, ILogger<JobsController> logger)
+        public JobsController(AppDbContext db, IBlobService blobs, ScoringService scoring, AiScoringService aiScoring, ILogger<JobsController> logger)
         {
             _db = db;
             _blobs = blobs;
             _scoring = scoring;
+            _aiScoring = aiScoring;
             _logger = logger;
         }
 
@@ -457,21 +459,36 @@ namespace ResumeScreening.API.Controllers
             return Ok(saved);
         }
 
-        // POST api/jobs/{id}/screen — Trigger AI screening for all resumes under a job
+        // POST api/jobs/{id}/screen?method=tfidf|ai — Trigger screening for all resumes under a job
         [HttpPost("{id:int}/screen")]
         [Authorize(Roles = "HRAdmin")]
         public async Task<ActionResult<ScreeningResponseDto>> ScreenResumes(
             int id,
-            CancellationToken cancellationToken)
+            [FromQuery] string method = "tfidf",
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                var scored = await _scoring.ScoreAllResumesForJobAsync(id, cancellationToken);
+                int scored;
+                string label;
+
+                if (method.Equals("ai", StringComparison.OrdinalIgnoreCase))
+                {
+                    scored = await _aiScoring.ScoreAllResumesForJobAsync(id, cancellationToken);
+                    label = "Gemini AI";
+                }
+                else
+                {
+                    scored = await _scoring.ScoreAllResumesForJobAsync(id, cancellationToken);
+                    label = "TF-IDF";
+                }
+
                 return Ok(new ScreeningResponseDto
                 {
                     JobId = id,
                     ResumesScored = scored,
-                    Message = $"Successfully scored {scored} resume(s)."
+                    Method = label,
+                    Message = $"Successfully scored {scored} resume(s) using {label}."
                 });
             }
             catch (InvalidOperationException ex)

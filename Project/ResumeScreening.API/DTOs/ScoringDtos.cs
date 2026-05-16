@@ -5,6 +5,7 @@ namespace ResumeScreening.API.DTOs
     {
         public int JobId { get; set; }
         public int ResumesScored { get; set; }
+        public string Method { get; set; } = "TF-IDF";
         public string Message { get; set; } = string.Empty;
     }
 

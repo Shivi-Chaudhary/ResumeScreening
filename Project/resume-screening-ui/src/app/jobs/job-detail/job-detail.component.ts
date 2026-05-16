@@ -34,6 +34,17 @@ export class JobDetailComponent implements OnInit {
 
   jobId = 0;
 
+  // ── Tabs ───────────────────────────────────────────────────────────────
+  readonly activeTab = signal<'overview' | 'resumes' | 'screening' | 'decisions'>('overview');
+
+  setTab(tab: 'overview' | 'resumes' | 'screening' | 'decisions'): void {
+    this.activeTab.set(tab);
+  }
+
+  getDecisionCandidates(status: string): RankedCandidate[] {
+    return this.rankings().filter(c => (c.hrStatus ?? 'Pending') === status);
+  }
+
   readonly editForm = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
     description: ['', [Validators.required]],
@@ -57,6 +68,7 @@ export class JobDetailComponent implements OnInit {
   selectedResumeFiles: File[] = [];
 
   // ── AI Screening ───────────────────────────────────────────────────────
+  screeningMethod: 'tfidf' | 'ai' = 'tfidf';
   readonly screening = signal(false);
   readonly screeningMsg = signal('');
   readonly screeningProgress = signal(0);
@@ -157,7 +169,7 @@ export class JobDetailComponent implements OnInit {
       }
     }, 200);
 
-    this.jobsApi.screenResumes(this.jobId).subscribe({
+    this.jobsApi.screenResumes(this.jobId, this.screeningMethod).subscribe({
       next: (res) => {
         this.stopScreeningAnim();
         this.screeningProgress.set(100);

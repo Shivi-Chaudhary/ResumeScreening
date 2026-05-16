@@ -54,6 +54,7 @@ export interface BulkResumeUploadResponse {
 export interface ScreeningResponse {
   jobId: number;
   resumesScored: number;
+  method: string;
   message: string;
 }
 
@@ -149,9 +150,10 @@ export class JobsService {
     return this.http.delete<void>(`/api/jobs/${jobId}/resumes/${resumeId}`);
   }
 
-  /** Trigger AI screening for all resumes under a job */
-  screenResumes(jobId: number): Observable<ScreeningResponse> {
-    return this.http.post<ScreeningResponse>(`/api/jobs/${jobId}/screen`, {});
+  /** Trigger screening for all resumes under a job */
+  screenResumes(jobId: number, method: 'tfidf' | 'ai' = 'tfidf'): Observable<ScreeningResponse> {
+    const params = new HttpParams().set('method', method);
+    return this.http.post<ScreeningResponse>(`/api/jobs/${jobId}/screen`, {}, { params });
   }
 
   /** Get ranked candidates sorted by score descending */
