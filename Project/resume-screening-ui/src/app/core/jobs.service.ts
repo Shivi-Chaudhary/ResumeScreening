@@ -67,6 +67,8 @@ export interface RankedCandidate {
   matchedKeywords: string | null;
   fileUrl: string | null;
   scoredAt: string;
+  hrStatus: string | null;
+  notes: string | null;
 }
 
 export interface ResumeDetail {
@@ -160,5 +162,15 @@ export class JobsService {
   /** Get resume detail with full score breakdown */
   getResumeDetail(resumeId: number): Observable<ResumeDetail> {
     return this.http.get<ResumeDetail>(`/api/resumes/${resumeId}`);
+  }
+
+  /** HRAdmin: update shortlist / reject / review decision on a resume */
+  updateResumeStatus(resumeId: number, hrStatus: string, notes: string | null): Observable<void> {
+    return this.http.put<void>(`/api/resumes/${resumeId}/status`, { hrStatus, notes });
+  }
+
+  /** HRAdmin: download ranked candidates as Excel file */
+  exportRankings(jobId: number): Observable<Blob> {
+    return this.http.get(`/api/jobs/${jobId}/rankings/export`, { responseType: 'blob' });
   }
 }

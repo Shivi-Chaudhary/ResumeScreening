@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
 using ResumeScreening.API.Data;
 using ResumeScreening.API.DTOs;
 using ResumeScreening.API.Helpers;
@@ -491,7 +493,7 @@ namespace ResumeScreening.API.Controllers
             var rows = await _db.ScoreResults
                 .AsNoTracking()
                 .Where(s => s.JobId == id)
-                .Include(s => s.Resume)
+                .Include(s => s.Resume).ThenInclude(r => r.Application)
                 .OrderByDescending(s => s.Score)
                 .ToListAsync(cancellationToken);
 
@@ -505,7 +507,9 @@ namespace ResumeScreening.API.Controllers
                 ScoreCategory = s.Score >= 70 ? "green" : s.Score >= 40 ? "amber" : "red",
                 MatchedKeywords = s.MatchedKeywords,
                 FileUrl = s.Resume.FileUrl,
-                ScoredAt = s.ScoredAt
+                ScoredAt = s.ScoredAt,
+                HRStatus = s.Resume.Application?.HRStatus,
+                Notes = s.Resume.Application?.Notes
             }).ToList();
 
             return Ok(ranked);
@@ -557,6 +561,133 @@ namespace ResumeScreening.API.Controllers
             };
 
             return Ok(dto);
+        }
+
+        // PUT api/resumes/{id}/status — HRAdmin sets shortlist/reject/review decision
+        [HttpPut("/api/resumes/{id:int}/status")]
+        [Authorize(Roles = "HRAdmin")]
+        public async Task<IActionResult> UpdateResumeStatus(
+            int id,
+            [FromBody] UpdateApplicationStatusDto dto,
+            CancellationToken cancellationToken)
+        {
+            var allowed = new[] { "Pending", "Shortlisted", "UnderReview", "Rejected" };
+            if (!allowed.Contains(dto.HRStatus))
+                return BadRequest(new { message = "HRStatus must be Pending, Shortlisted, UnderReview, or Rejected." });
+
+            var resume = await _db.Resumes
+                .Include(r => r.Application)
+                .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+            if (resume == null)
+                return NotFound(new { message = "Resume not found." });
+
+            if (resume.Application == null)
+            {
+                _db.Applications.Add(new Application
+                {
+                    ResumeId = resume.Id,
+                    JobId = resume.JobId,
+                    HRStatus = dto.HRStatus,
+                    Notes = dto.Notes?.Trim(),
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                resume.Application.HRStatus = dto.HRStatus;
+                resume.Application.Notes = dto.Notes?.Trim();
+                resume.Application.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+            return NoContent();
+        }
+
+        // GET api/jobs/{id}/rankings/export — Download ranked candidates as Excel
+        [HttpGet("{id:int}/rankings/export")]
+        [Authorize(Roles = "HRAdmin")]
+        public async Task<IActionResult> ExportRankings(int id, CancellationToken cancellationToken)
+        {
+            var job = await _db.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
+            if (job == null)
+                return NotFound(new { message = "Job not found." });
+
+            var rows = await _db.ScoreResults
+                .AsNoTracking()
+                .Where(s => s.JobId == id)
+                .Include(s => s.Resume).ThenInclude(r => r.Application)
+                .OrderByDescending(s => s.Score)
+                .ToListAsync(cancellationToken);
+
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            using var package = new ExcelPackage();
+            var ws = package.Workbook.Worksheets.Add("Rankings");
+
+            // Header row
+            var headers = new[] { "Rank", "Candidate", "Email", "Score", "Category", "Keyword Match", "Exp Bonus", "Skills Bonus", "Degree Bonus", "Matched Keywords", "HR Status", "Notes", "Scored At" };
+            for (int col = 1; col <= headers.Length; col++)
+            {
+                ws.Cells[1, col].Value = headers[col - 1];
+                ws.Cells[1, col].Style.Font.Bold = true;
+                ws.Cells[1, col].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                ws.Cells[1, col].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(37, 99, 235));
+                ws.Cells[1, col].Style.Font.Color.SetColor(System.Drawing.Color.White);
+            }
+
+            // Data rows
+            for (int i = 0; i < rows.Count; i++)
+            {
+                var s = rows[i];
+                var row = i + 2;
+                double kwMatch = 0, expBonus = 0, skillsBonus = 0, degreeBonus = 0;
+
+                if (!string.IsNullOrEmpty(s.ScoreBreakdownJson))
+                {
+                    try
+                    {
+                        var breakdown = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, double>>(s.ScoreBreakdownJson);
+                        if (breakdown != null)
+                        {
+                            breakdown.TryGetValue("KeywordMatch", out kwMatch);
+                            breakdown.TryGetValue("ExperienceBonus", out expBonus);
+                            breakdown.TryGetValue("SkillsBonus", out skillsBonus);
+                            breakdown.TryGetValue("DegreeBonus", out degreeBonus);
+                        }
+                    }
+                    catch { /* ignore parse errors */ }
+                }
+
+                var category = s.Score >= 70 ? "Strong" : s.Score >= 40 ? "Moderate" : "Weak";
+                ws.Cells[row, 1].Value = i + 1;
+                ws.Cells[row, 2].Value = s.Resume.CandidateName;
+                ws.Cells[row, 3].Value = s.Resume.CandidateEmail ?? "";
+                ws.Cells[row, 4].Value = s.Score;
+                ws.Cells[row, 5].Value = category;
+                ws.Cells[row, 6].Value = kwMatch;
+                ws.Cells[row, 7].Value = expBonus;
+                ws.Cells[row, 8].Value = skillsBonus;
+                ws.Cells[row, 9].Value = degreeBonus;
+                ws.Cells[row, 10].Value = s.MatchedKeywords ?? "";
+                ws.Cells[row, 11].Value = s.Resume.Application?.HRStatus ?? "Pending";
+                ws.Cells[row, 12].Value = s.Resume.Application?.Notes ?? "";
+                ws.Cells[row, 13].Value = s.ScoredAt.ToString("yyyy-MM-dd HH:mm");
+
+                // Color-code the score cell
+                var scoreColor = s.Score >= 70
+                    ? System.Drawing.Color.FromArgb(187, 247, 208)   // green
+                    : s.Score >= 40
+                        ? System.Drawing.Color.FromArgb(254, 240, 138) // amber
+                        : System.Drawing.Color.FromArgb(254, 202, 202); // red
+                ws.Cells[row, 4].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                ws.Cells[row, 4].Style.Fill.BackgroundColor.SetColor(scoreColor);
+            }
+
+            ws.Cells[ws.Dimension.Address].AutoFitColumns();
+
+            var fileName = $"rankings_{job.Title.Replace(' ', '_')}_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+            var bytes = package.GetAsByteArray();
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
         }
 
         private static JobResponseDto MapToResponse(Job job) => new()

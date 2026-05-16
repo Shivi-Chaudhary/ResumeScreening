@@ -226,8 +226,17 @@
     <!-- ─── Rankings Table ─────────────────────────────────────────── -->
     @if (rankings().length > 0) {
       <section class="card block rankings-block">
-        <h2>📊 Candidate Rankings</h2>
-        <p class="muted small">Candidates ranked by AI score. Click a candidate to see the full score breakdown.</p>
+        <div class="rankings-header">
+          <div>
+            <h2>📊 Candidate Rankings</h2>
+            <p class="muted small">Candidates ranked by AI score. Click a candidate to see the full score breakdown.</p>
+          </div>
+          @if (auth.isHrAdmin()) {
+            <button type="button" class="btn btn-export" [disabled]="exporting()" (click)="exportToExcel()">
+              {{ exporting() ? 'Exporting…' : '⬇ Export Excel' }}
+            </button>
+          }
+        </div>
 
         <div class="table-wrap">
           <table class="rankings-table">
@@ -239,6 +248,7 @@
                 <th class="col-score">Score</th>
                 <th>Matched Keywords</th>
                 <th>Scored At</th>
+                <th>HR Status</th>
                 <th>Resume</th>
                 <th>Details</th>
               </tr>
@@ -277,6 +287,11 @@
                     }
                   </td>
                   <td>{{ c.scoredAt | date: 'short' }}</td>
+                  <td>
+                    <span class="hr-status-badge hr-status-{{ (c.hrStatus ?? 'Pending').toLowerCase() }}">
+                      {{ c.hrStatus ?? 'Pending' }}
+                    </span>
+                  </td>
                   <td>
                     @if (c.fileUrl) {
                       <a [href]="c.fileUrl" target="_blank" rel="noopener">Open</a>
@@ -349,6 +364,27 @@
                     <span class="keyword-tag">{{ kw }}</span>
                   }
                 </div>
+              </div>
+            }
+
+            @if (auth.isHrAdmin()) {
+              <div class="hr-status-section">
+                <h3>HR Decision</h3>
+                <div class="hr-status-row">
+                  <select [(ngModel)]="hrStatusValue" class="hr-status-select">
+                    <option value="Pending">Pending</option>
+                    <option value="Shortlisted">Shortlisted</option>
+                    <option value="UnderReview">Under Review</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="hrStatusSaving()" (click)="saveHrStatus()">
+                    {{ hrStatusSaving() ? 'Saving…' : 'Save' }}
+                  </button>
+                </div>
+                <textarea class="hr-notes" [(ngModel)]="hrNotesValue" placeholder="Add notes…" rows="2"></textarea>
+                @if (hrStatusMsg()) {
+                  <p class="hr-status-msg" [class.hr-status-msg-error]="hrStatusMsg().includes('failed')">{{ hrStatusMsg() }}</p>
+                }
               </div>
             }
 

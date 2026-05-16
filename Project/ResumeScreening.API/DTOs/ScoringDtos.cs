@@ -20,6 +20,15 @@ namespace ResumeScreening.API.DTOs
         public string? MatchedKeywords { get; set; }
         public string? FileUrl { get; set; }
         public DateTime ScoredAt { get; set; }
+        public string? HRStatus { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    /// <summary>Request body for updating HR application status on a resume.</summary>
+    public class UpdateApplicationStatusDto
+    {
+        public string HRStatus { get; set; } = "Pending";  // Pending | Shortlisted | UnderReview | Rejected
+        public string? Notes { get; set; }
     }
 
     /// <summary>Detailed resume view with full score breakdown.</summary>

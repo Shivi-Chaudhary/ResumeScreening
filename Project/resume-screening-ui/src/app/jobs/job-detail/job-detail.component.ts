@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import {
   JobsService,
@@ -15,7 +15,7 @@ import { AuthService } from '../../core/auth.service';
 @Component({
   selector: 'app-job-detail',
   standalone: true,
-  imports: [RouterLink, ReactiveFormsModule, DatePipe, DecimalPipe],
+  imports: [RouterLink, FormsModule, ReactiveFormsModule, DatePipe, DecimalPipe],
   templateUrl: './job-detail.component.html',
   styleUrl: './job-detail.component.scss',
 })
@@ -69,6 +69,15 @@ export class JobDetailComponent implements OnInit {
   readonly selectedResume = signal<ResumeDetail | null>(null);
   readonly resumeDetailLoading = signal(false);
   readonly showResumeModal = signal(false);
+
+  // ── HR Status ──────────────────────────────────────────────────────────
+  hrStatusValue = 'Pending';
+  hrNotesValue = '';
+  readonly hrStatusSaving = signal(false);
+  readonly hrStatusMsg = signal('');
+
+  // ── Export ─────────────────────────────────────────────────────────────
+  readonly exporting = signal(false);
 
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
@@ -177,9 +186,12 @@ export class JobDetailComponent implements OnInit {
     this.resumeDetailLoading.set(true);
     this.selectedResume.set(null);
     this.showResumeModal.set(true);
+    this.hrStatusMsg.set('');
     this.jobsApi.getResumeDetail(resumeId).subscribe({
       next: (detail) => {
         this.selectedResume.set(detail);
+        this.hrStatusValue = detail.hrStatus ?? 'Pending';
+        this.hrNotesValue = detail.notes ?? '';
         this.resumeDetailLoading.set(false);
       },
       error: () => {
@@ -192,6 +204,45 @@ export class JobDetailComponent implements OnInit {
   closeResumeModal(): void {
     this.showResumeModal.set(false);
     this.selectedResume.set(null);
+    this.hrStatusMsg.set('');
+  }
+
+  saveHrStatus(): void {
+    const detail = this.selectedResume();
+    if (!detail || !this.auth.isHrAdmin()) return;
+    this.hrStatusSaving.set(true);
+    this.hrStatusMsg.set('');
+    this.jobsApi.updateResumeStatus(detail.id, this.hrStatusValue, this.hrNotesValue || null).subscribe({
+      next: () => {
+        this.hrStatusSaving.set(false);
+        this.hrStatusMsg.set('Status saved.');
+        // Update local state so rankings table reflects the change immediately
+        this.loadRankings();
+      },
+      error: (err) => {
+        this.hrStatusSaving.set(false);
+        this.hrStatusMsg.set(err?.error?.message ?? 'Save failed.');
+      },
+    });
+  }
+
+  exportToExcel(): void {
+    if (!this.auth.isHrAdmin()) return;
+    this.exporting.set(true);
+    this.jobsApi.exportRankings(this.jobId).subscribe({
+      next: (blob) => {
+        this.exporting.set(false);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rankings_job${this.jobId}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.exporting.set(false);
+      },
+    });
   }
 
   getScoreBreakdown(): { label: string; value: number }[] {
