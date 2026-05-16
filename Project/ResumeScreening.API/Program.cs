@@ -103,6 +103,7 @@ builder.Services.AddSwaggerGen(c =>
 
 // ── Register Services (add more here as you build them) ───────────────────────
 builder.Services.AddScoped<IBlobService, BlobService>();
+builder.Services.AddScoped<ScoringService>();
 
 // ── Build ─────────────────────────────────────────────────────────────────────
 var app = builder.Build();

@@ -1,14 +1,21 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { DatePipe } from '@angular/common';
-import { JobsService, JobDetail, ResumeListItem, BulkResumeUploadResponse } from '../../core/jobs.service';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import {
+  JobsService,
+  JobDetail,
+  ResumeListItem,
+  BulkResumeUploadResponse,
+  RankedCandidate,
+  ResumeDetail,
+} from '../../core/jobs.service';
 import { AuthService } from '../../core/auth.service';
 
 @Component({
   selector: 'app-job-detail',
   standalone: true,
-  imports: [RouterLink, ReactiveFormsModule, DatePipe],
+  imports: [RouterLink, ReactiveFormsModule, DatePipe, DecimalPipe],
   templateUrl: './job-detail.component.html',
   styleUrl: './job-detail.component.scss',
 })
@@ -43,11 +50,25 @@ export class JobDetailComponent implements OnInit {
   readonly myResumeBusy = signal(false);
   readonly resumeMsg = signal('');
   readonly resumePickHint = signal('');
-  /** Resume row id being deleted (disables that row’s button) */
+  /** Resume row id being deleted (disables that row's button) */
   readonly deletingResumeId = signal<number | null>(null);
 
   /** Queued PDFs before upload (max 20) */
   selectedResumeFiles: File[] = [];
+
+  // ── AI Screening ───────────────────────────────────────────────────────
+  readonly screening = signal(false);
+  readonly screeningMsg = signal('');
+  readonly screeningProgress = signal(0);
+  private screeningInterval: ReturnType<typeof setInterval> | null = null;
+
+  readonly rankings = signal<RankedCandidate[]>([]);
+  readonly rankingsLoading = signal(false);
+
+  // ── Resume Detail Modal ────────────────────────────────────────────────
+  readonly selectedResume = signal<ResumeDetail | null>(null);
+  readonly resumeDetailLoading = signal(false);
+  readonly showResumeModal = signal(false);
 
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
@@ -75,6 +96,7 @@ export class JobDetailComponent implements OnInit {
         });
         this.loading.set(false);
         this.loadResumes();
+        this.loadRankings();
       },
       error: (err) => {
         this.loading.set(false);
@@ -95,6 +117,101 @@ export class JobDetailComponent implements OnInit {
         this.resumesLoading.set(false);
       },
     });
+  }
+
+  loadRankings(): void {
+    this.rankingsLoading.set(true);
+    this.jobsApi.getRankings(this.jobId).subscribe({
+      next: (rows) => {
+        this.rankings.set(rows);
+        this.rankingsLoading.set(false);
+      },
+      error: () => {
+        this.rankings.set([]);
+        this.rankingsLoading.set(false);
+      },
+    });
+  }
+
+  // ── AI Screening ───────────────────────────────────────────────────────
+  runScreening(): void {
+    if (!this.auth.isHrAdmin()) return;
+    this.screening.set(true);
+    this.screeningMsg.set('');
+    this.screeningProgress.set(0);
+
+    // Animate progress bar while waiting
+    this.screeningInterval = setInterval(() => {
+      const current = this.screeningProgress();
+      if (current < 90) {
+        this.screeningProgress.set(current + Math.random() * 8);
+      }
+    }, 200);
+
+    this.jobsApi.screenResumes(this.jobId).subscribe({
+      next: (res) => {
+        this.stopScreeningAnim();
+        this.screeningProgress.set(100);
+        this.screening.set(false);
+        this.screeningMsg.set(res.message);
+        this.loadResumes();
+        this.loadRankings();
+      },
+      error: (err) => {
+        this.stopScreeningAnim();
+        this.screening.set(false);
+        this.screeningMsg.set(err?.error?.message ?? 'Screening failed.');
+      },
+    });
+  }
+
+  private stopScreeningAnim(): void {
+    if (this.screeningInterval) {
+      clearInterval(this.screeningInterval);
+      this.screeningInterval = null;
+    }
+  }
+
+  // ── Resume Detail ──────────────────────────────────────────────────────
+  openResumeDetail(resumeId: number): void {
+    this.resumeDetailLoading.set(true);
+    this.selectedResume.set(null);
+    this.showResumeModal.set(true);
+    this.jobsApi.getResumeDetail(resumeId).subscribe({
+      next: (detail) => {
+        this.selectedResume.set(detail);
+        this.resumeDetailLoading.set(false);
+      },
+      error: () => {
+        this.resumeDetailLoading.set(false);
+        this.showResumeModal.set(false);
+      },
+    });
+  }
+
+  closeResumeModal(): void {
+    this.showResumeModal.set(false);
+    this.selectedResume.set(null);
+  }
+
+  getScoreBreakdown(): { label: string; value: number }[] {
+    const detail = this.selectedResume();
+    if (!detail?.scoreBreakdownJson) return [];
+    try {
+      const obj = JSON.parse(detail.scoreBreakdownJson) as Record<string, number>;
+      return Object.entries(obj).map(([key, value]) => ({
+        label: key.replace(/([A-Z])/g, ' $1').trim(),
+        value,
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  getMatchedKeywordsList(): string[] {
+    const detail = this.selectedResume();
+    if (!detail?.matchedKeywords) return [];
+    return detail.matchedKeywords.split(',').map((k) => k.trim()).filter((k) => k.length > 0);
   }
 
   onDragOver(ev: DragEvent): void {

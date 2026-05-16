@@ -51,6 +51,41 @@ export interface BulkResumeUploadResponse {
   results: ResumeUploadResult[];
 }
 
+export interface ScreeningResponse {
+  jobId: number;
+  resumesScored: number;
+  message: string;
+}
+
+export interface RankedCandidate {
+  rank: number;
+  resumeId: number;
+  candidateName: string;
+  candidateEmail: string | null;
+  score: number;
+  scoreCategory: 'green' | 'amber' | 'red';
+  matchedKeywords: string | null;
+  fileUrl: string | null;
+  scoredAt: string;
+}
+
+export interface ResumeDetail {
+  id: number;
+  candidateName: string;
+  candidateEmail: string | null;
+  fileUrl: string;
+  extractedText: string | null;
+  status: string;
+  uploadedAt: string;
+  score: number | null;
+  scoreCategory: string | null;
+  matchedKeywords: string | null;
+  scoreBreakdownJson: string | null;
+  scoredAt: string | null;
+  hrStatus: string | null;
+  notes: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class JobsService {
   private readonly http = inject(HttpClient);
@@ -110,5 +145,20 @@ export class JobsService {
 
   deleteResume(jobId: number, resumeId: number): Observable<void> {
     return this.http.delete<void>(`/api/jobs/${jobId}/resumes/${resumeId}`);
+  }
+
+  /** Trigger AI screening for all resumes under a job */
+  screenResumes(jobId: number): Observable<ScreeningResponse> {
+    return this.http.post<ScreeningResponse>(`/api/jobs/${jobId}/screen`, {});
+  }
+
+  /** Get ranked candidates sorted by score descending */
+  getRankings(jobId: number): Observable<RankedCandidate[]> {
+    return this.http.get<RankedCandidate[]>(`/api/jobs/${jobId}/rankings`);
+  }
+
+  /** Get resume detail with full score breakdown */
+  getResumeDetail(resumeId: number): Observable<ResumeDetail> {
+    return this.http.get<ResumeDetail>(`/api/resumes/${resumeId}`);
   }
 }

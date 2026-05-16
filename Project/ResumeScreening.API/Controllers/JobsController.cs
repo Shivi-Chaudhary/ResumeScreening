@@ -18,6 +18,7 @@ namespace ResumeScreening.API.Controllers
     {
         private readonly AppDbContext _db;
         private readonly IBlobService _blobs;
+        private readonly ScoringService _scoring;
         private readonly ILogger<JobsController> _logger;
 
         private static readonly HashSet<string> AllowedJdExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -29,10 +30,11 @@ namespace ResumeScreening.API.Controllers
             ".pdf"
         };
 
-        public JobsController(AppDbContext db, IBlobService blobs, ILogger<JobsController> logger)
+        public JobsController(AppDbContext db, IBlobService blobs, ScoringService scoring, ILogger<JobsController> logger)
         {
             _db = db;
             _blobs = blobs;
+            _scoring = scoring;
             _logger = logger;
         }
 
@@ -451,6 +453,110 @@ namespace ResumeScreening.API.Controllers
             }
 
             return Ok(saved);
+        }
+
+        // POST api/jobs/{id}/screen — Trigger AI screening for all resumes under a job
+        [HttpPost("{id:int}/screen")]
+        [Authorize(Roles = "HRAdmin")]
+        public async Task<ActionResult<ScreeningResponseDto>> ScreenResumes(
+            int id,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var scored = await _scoring.ScoreAllResumesForJobAsync(id, cancellationToken);
+                return Ok(new ScreeningResponseDto
+                {
+                    JobId = id,
+                    ResumesScored = scored,
+                    Message = $"Successfully scored {scored} resume(s)."
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // GET api/jobs/{id}/rankings — Get ranked candidates by score descending
+        [HttpGet("{id:int}/rankings")]
+        public async Task<ActionResult<IReadOnlyList<RankedCandidateDto>>> GetRankings(
+            int id,
+            CancellationToken cancellationToken)
+        {
+            var exists = await _db.Jobs.AnyAsync(j => j.Id == id, cancellationToken);
+            if (!exists)
+                return NotFound(new { message = "Job not found." });
+
+            var rows = await _db.ScoreResults
+                .AsNoTracking()
+                .Where(s => s.JobId == id)
+                .Include(s => s.Resume)
+                .OrderByDescending(s => s.Score)
+                .ToListAsync(cancellationToken);
+
+            var ranked = rows.Select((s, i) => new RankedCandidateDto
+            {
+                Rank = i + 1,
+                ResumeId = s.ResumeId,
+                CandidateName = s.Resume.CandidateName,
+                CandidateEmail = s.Resume.CandidateEmail,
+                Score = s.Score,
+                ScoreCategory = s.Score >= 70 ? "green" : s.Score >= 40 ? "amber" : "red",
+                MatchedKeywords = s.MatchedKeywords,
+                FileUrl = s.Resume.FileUrl,
+                ScoredAt = s.ScoredAt
+            }).ToList();
+
+            return Ok(ranked);
+        }
+
+        // GET api/resumes/{id} — Get resume detail with score breakdown
+        [HttpGet("/api/resumes/{id:int}")]
+        public async Task<ActionResult<ResumeDetailDto>> GetResumeDetail(
+            int id,
+            CancellationToken cancellationToken)
+        {
+            var resume = await _db.Resumes
+                .AsNoTracking()
+                .Include(r => r.ScoreResult)
+                .Include(r => r.Application)
+                .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+            if (resume == null)
+                return NotFound(new { message = "Resume not found." });
+
+            // Viewers can only see their own resume
+            if (!User.IsInRole("HRAdmin"))
+            {
+                var uid = User.GetUserId();
+                if (uid is null)
+                    return Unauthorized(new { message = "Invalid token: missing user id claim." });
+                if (resume.UploadedByUserId != uid)
+                    return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only view your own resume details." });
+            }
+
+            var dto = new ResumeDetailDto
+            {
+                Id = resume.Id,
+                CandidateName = resume.CandidateName,
+                CandidateEmail = resume.CandidateEmail,
+                FileUrl = resume.FileUrl,
+                ExtractedText = resume.ExtractedText,
+                Status = resume.Status,
+                UploadedAt = resume.UploadedAt,
+                Score = resume.ScoreResult?.Score,
+                ScoreCategory = resume.ScoreResult != null
+                    ? (resume.ScoreResult.Score >= 70 ? "green" : resume.ScoreResult.Score >= 40 ? "amber" : "red")
+                    : null,
+                MatchedKeywords = resume.ScoreResult?.MatchedKeywords,
+                ScoreBreakdownJson = resume.ScoreResult?.ScoreBreakdownJson,
+                ScoredAt = resume.ScoreResult?.ScoredAt,
+                HRStatus = resume.Application?.HRStatus,
+                Notes = resume.Application?.Notes
+            };
+
+            return Ok(dto);
         }
 
         private static JobResponseDto MapToResponse(Job job) => new()

@@ -156,7 +156,8 @@
                       class="badge"
                       [class.badge-active]="r.status === 'Extracted'"
                       [class.badge-pending]="r.status === 'Pending'"
-                      [class.badge-closed]="r.status !== 'Extracted' && r.status !== 'Pending'"
+                      [class.badge-scored]="r.status === 'Scored'"
+                      [class.badge-closed]="r.status !== 'Extracted' && r.status !== 'Pending' && r.status !== 'Scored'"
                       >{{ r.status }}</span
                     >
                   </td>
@@ -184,6 +185,181 @@
         </div>
       }
     </section>
+
+    <!-- ─── AI Screening Section ─────────────────────────────────────── -->
+    @if (auth.isHrAdmin()) {
+      <section class="card block screening-block">
+        <div class="screening-header">
+          <div>
+            <h2>🤖 AI Resume Screening</h2>
+            <p class="muted small">Screen all uploaded resumes against the job description using TF-IDF keyword matching with bonus scoring.</p>
+          </div>
+          <button
+            type="button"
+            class="btn btn-screen"
+            [disabled]="screening() || resumes().length === 0"
+            (click)="runScreening()"
+          >
+            @if (screening()) {
+              <span class="spinner"></span> Screening…
+            } @else {
+              ⚡ Run Screening
+            }
+          </button>
+        </div>
+
+        @if (screening()) {
+          <div class="progress-container">
+            <div class="progress-bar" [style.width.%]="screeningProgress()"></div>
+          </div>
+          <p class="muted small progress-text">Analyzing resumes with TF-IDF scoring engine…</p>
+        }
+
+        @if (screeningMsg()) {
+          <p class="screening-msg" [class.screening-msg-error]="screeningMsg().includes('failed') || screeningMsg().includes('No resumes')">
+            {{ screeningMsg() }}
+          </p>
+        }
+      </section>
+    }
+
+    <!-- ─── Rankings Table ─────────────────────────────────────────── -->
+    @if (rankings().length > 0) {
+      <section class="card block rankings-block">
+        <h2>📊 Candidate Rankings</h2>
+        <p class="muted small">Candidates ranked by AI score. Click a candidate to see the full score breakdown.</p>
+
+        <div class="table-wrap">
+          <table class="rankings-table">
+            <thead>
+              <tr>
+                <th class="col-rank">#</th>
+                <th>Candidate</th>
+                <th>Email</th>
+                <th class="col-score">Score</th>
+                <th>Matched Keywords</th>
+                <th>Scored At</th>
+                <th>Resume</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of rankings(); track c.resumeId) {
+                <tr class="ranking-row" [class.ranking-top]="c.rank <= 3">
+                  <td class="col-rank">
+                    @if (c.rank === 1) {
+                      <span class="rank-medal">🥇</span>
+                    } @else if (c.rank === 2) {
+                      <span class="rank-medal">🥈</span>
+                    } @else if (c.rank === 3) {
+                      <span class="rank-medal">🥉</span>
+                    } @else {
+                      {{ c.rank }}
+                    }
+                  </td>
+                  <td class="candidate-name">{{ c.candidateName }}</td>
+                  <td>{{ c.candidateEmail ?? '—' }}</td>
+                  <td class="col-score">
+                    <span
+                      class="score-badge"
+                      [class.score-green]="c.scoreCategory === 'green'"
+                      [class.score-amber]="c.scoreCategory === 'amber'"
+                      [class.score-red]="c.scoreCategory === 'red'"
+                    >
+                      {{ c.score | number: '1.0-1' }}
+                    </span>
+                  </td>
+                  <td class="keywords-cell">
+                    @if (c.matchedKeywords) {
+                      <span class="keywords-preview">{{ c.matchedKeywords }}</span>
+                    } @else {
+                      <span class="muted">—</span>
+                    }
+                  </td>
+                  <td>{{ c.scoredAt | date: 'short' }}</td>
+                  <td>
+                    @if (c.fileUrl) {
+                      <a [href]="c.fileUrl" target="_blank" rel="noopener">Open</a>
+                    }
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-ghost btn-sm" (click)="openResumeDetail(c.resumeId)">
+                      View
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    } @else if (!rankingsLoading() && resumes().length > 0) {
+      <section class="card block">
+        <p class="muted">No screening results yet. Upload resumes and click "Run Screening" to rank candidates.</p>
+      </section>
+    }
+
+    <!-- ─── Resume Detail Modal ─────────────────────────────────────── -->
+    @if (showResumeModal()) {
+      <div class="modal-overlay" (click)="closeResumeModal()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <button type="button" class="modal-close" (click)="closeResumeModal()">×</button>
+
+          @if (resumeDetailLoading()) {
+            <p class="muted">Loading resume details…</p>
+          } @else if (selectedResume()) {
+            <h2 class="modal-title">{{ selectedResume()!.candidateName }}</h2>
+            <p class="modal-sub">{{ selectedResume()!.candidateEmail ?? 'No email' }} · {{ selectedResume()!.status }}</p>
+
+            @if (selectedResume()!.score !== null && selectedResume()!.score !== undefined) {
+              <div class="score-overview">
+                <div
+                  class="score-circle"
+                  [class.score-green]="selectedResume()!.scoreCategory === 'green'"
+                  [class.score-amber]="selectedResume()!.scoreCategory === 'amber'"
+                  [class.score-red]="selectedResume()!.scoreCategory === 'red'"
+                >
+                  <span class="score-value">{{ selectedResume()!.score | number: '1.0-1' }}</span>
+                  <span class="score-label">Score</span>
+                </div>
+
+                <div class="score-breakdown">
+                  <h3>Score Breakdown</h3>
+                  @for (item of getScoreBreakdown(); track item.label) {
+                    <div class="breakdown-row">
+                      <span class="breakdown-label">{{ item.label }}</span>
+                      <div class="breakdown-bar-track">
+                        <div
+                          class="breakdown-bar-fill"
+                          [style.width.%]="item.label === 'Keyword Match' ? (item.value / 60 * 100) : (item.value / 15 * 100)"
+                        ></div>
+                      </div>
+                      <span class="breakdown-value">{{ item.value | number: '1.0-1' }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (getMatchedKeywordsList().length > 0) {
+              <div class="matched-keywords-section">
+                <h3>Matched Keywords</h3>
+                <div class="keyword-tags">
+                  @for (kw of getMatchedKeywordsList(); track kw) {
+                    <span class="keyword-tag">{{ kw }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            <div class="modal-actions">
+              <a [href]="selectedResume()!.fileUrl" target="_blank" rel="noopener" class="btn btn-primary">Open PDF</a>
+              <button type="button" class="btn btn-ghost" (click)="closeResumeModal()">Close</button>
+            </div>
+          }
+        </div>
+      </div>
+    }
 
     @if (auth.isHrAdmin()) {
       <section class="card block">
