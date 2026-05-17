@@ -939,3 +939,23 @@
 
   &.hr-status-msg-error { color: #ef4444; }
 }
+
+// ── My Status (Viewer) ──────────────────────────────────────────
+.my-status-card {
+  .score-overview {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .my-status-info {
+    flex: 1;
+    min-width: 200px;
+
+    p {
+      margin: 0.4rem 0;
+      font-size: 0.95rem;
+    }
+  }
+}

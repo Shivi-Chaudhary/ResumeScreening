@@ -33,15 +33,20 @@
           <span class="tab-count">{{ resumes().length }}</span>
         }
       </button>
-      <button class="tab-btn" [class.tab-active]="activeTab() === 'screening'" (click)="setTab('screening')">
-        Screening
-        @if (rankings().length > 0) {
-          <span class="tab-count">{{ rankings().length }}</span>
-        }
-      </button>
       @if (auth.isHrAdmin()) {
+        <button class="tab-btn" [class.tab-active]="activeTab() === 'screening'" (click)="setTab('screening')">
+          Screening
+          @if (rankings().length > 0) {
+            <span class="tab-count">{{ rankings().length }}</span>
+          }
+        </button>
         <button class="tab-btn" [class.tab-active]="activeTab() === 'decisions'" (click)="setTab('decisions')">
           HR Decisions
+        </button>
+      }
+      @if (auth.isViewer()) {
+        <button class="tab-btn" [class.tab-active]="activeTab() === 'mystatus'" (click)="setTab('mystatus')">
+          My Status
         </button>
       }
     </nav>
@@ -245,10 +250,45 @@
       </section>
     }
 
-    <!-- ─── Tab: Screening ────────────────────────────────────────── -->
-    @if (activeTab() === 'screening') {
-      @if (auth.isHrAdmin()) {
-        <section class="card block screening-block">
+    <!-- ─── Tab: My Status (Viewer only) ─────────────────────────── -->
+    @if (activeTab() === 'mystatus' && auth.isViewer()) {
+      <section class="card block">
+        <h2>My Application Status</h2>
+        @if (myRanking(); as my) {
+          <div class="my-status-card">
+            <div class="score-overview">
+              <div
+                class="score-circle"
+                [class.score-green]="my.scoreCategory === 'green'"
+                [class.score-amber]="my.scoreCategory === 'amber'"
+                [class.score-red]="my.scoreCategory === 'red'"
+              >
+                <span class="score-value">{{ my.score | number: '1.0-1' }}</span>
+                <span class="score-label">Score</span>
+              </div>
+              <div class="my-status-info">
+                <p><strong>Rank:</strong> {{ my.rank }} of {{ rankings().length }}</p>
+                <p><strong>Status:</strong>
+                  <span class="hr-status-badge hr-status-{{ (my.hrStatus ?? 'Pending').toLowerCase() }}">
+                    {{ my.hrStatus ?? 'Pending' }}
+                  </span>
+                </p>
+                @if (my.matchedKeywords) {
+                  <p><strong>Matched Keywords:</strong> {{ my.matchedKeywords }}</p>
+                }
+                <p><strong>Scored At:</strong> {{ my.scoredAt | date: 'medium' }}</p>
+              </div>
+            </div>
+          </div>
+        } @else {
+          <p class="muted">Your resume has not been screened yet. Please check back later.</p>
+        }
+      </section>
+    }
+
+    <!-- ─── Tab: Screening (HRAdmin only) ────────────────────────── -->
+    @if (activeTab() === 'screening' && auth.isHrAdmin()) {
+      <section class="card block screening-block">
           <div class="screening-header">
             <div>
               <h2>🤖 AI Resume Screening</h2>
@@ -298,7 +338,6 @@
             </p>
           }
         </section>
-      }
 
       @if (rankings().length > 0) {
         <section class="card block rankings-block">

@@ -35,15 +35,18 @@ export class JobDetailComponent implements OnInit {
   jobId = 0;
 
   // ── Tabs ───────────────────────────────────────────────────────────────
-  readonly activeTab = signal<'overview' | 'resumes' | 'screening' | 'decisions'>('overview');
+  readonly activeTab = signal<'overview' | 'resumes' | 'screening' | 'decisions' | 'mystatus'>('overview');
 
-  setTab(tab: 'overview' | 'resumes' | 'screening' | 'decisions'): void {
+  setTab(tab: 'overview' | 'resumes' | 'screening' | 'decisions' | 'mystatus'): void {
     this.activeTab.set(tab);
   }
 
   getDecisionCandidates(status: string): RankedCandidate[] {
     return this.rankings().filter(c => (c.hrStatus ?? 'Pending') === status);
   }
+
+  /** Viewer's own ranking entry (matched by their resume) */
+  readonly myRanking = signal<RankedCandidate | null>(null);
 
   readonly editForm = this.fb.nonNullable.group({
     title: ['', [Validators.required, Validators.maxLength(200)]],
@@ -146,9 +149,21 @@ export class JobDetailComponent implements OnInit {
       next: (rows) => {
         this.rankings.set(rows);
         this.rankingsLoading.set(false);
+        // For Viewers, find their own ranking by matching their resume
+        if (this.auth.isViewer()) {
+          const myResumes = this.resumes();
+          if (myResumes.length > 0) {
+            const myResumeId = myResumes[0].id;
+            const mine = rows.find(r => r.resumeId === myResumeId) ?? null;
+            this.myRanking.set(mine);
+          } else {
+            this.myRanking.set(null);
+          }
+        }
       },
       error: () => {
         this.rankings.set([]);
+        this.myRanking.set(null);
         this.rankingsLoading.set(false);
       },
     });
