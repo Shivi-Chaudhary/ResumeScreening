@@ -1,6 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
+
+const API = environment.apiUrl;
 
 export interface JobListItem {
   id: number;
@@ -95,15 +98,15 @@ export class JobsService {
 
   list(status: 'All' | 'Active' | 'Closed' = 'All'): Observable<JobListItem[]> {
     const params = new HttpParams().set('status', status);
-    return this.http.get<JobListItem[]>('/api/jobs', { params });
+    return this.http.get<JobListItem[]>(`${API}/api/jobs`, { params });
   }
 
   get(id: number): Observable<JobDetail> {
-    return this.http.get<JobDetail>(`/api/jobs/${id}`);
+    return this.http.get<JobDetail>(`${API}/api/jobs/${id}`);
   }
 
   create(body: { title: string; description: string }): Observable<JobDetail> {
-    return this.http.post<JobDetail>('/api/jobs', {
+    return this.http.post<JobDetail>(`${API}/api/jobs`, {
       title: body.title,
       description: body.description,
     });
@@ -113,21 +116,21 @@ export class JobsService {
     id: number,
     body: { title?: string; description?: string; status?: string },
   ): Observable<JobDetail> {
-    return this.http.put<JobDetail>(`/api/jobs/${id}`, body);
+    return this.http.put<JobDetail>(`${API}/api/jobs/${id}`, body);
   }
 
   delete(id: number): Observable<void> {
-    return this.http.delete<void>(`/api/jobs/${id}`);
+    return this.http.delete<void>(`${API}/api/jobs/${id}`);
   }
 
   replaceJd(id: number, file: File): Observable<JobDetail> {
     const fd = new FormData();
     fd.append('file', file);
-    return this.http.post<JobDetail>(`/api/jobs/${id}/jd`, fd);
+    return this.http.post<JobDetail>(`${API}/api/jobs/${id}/jd`, fd);
   }
 
   listResumes(jobId: number): Observable<ResumeListItem[]> {
-    return this.http.get<ResumeListItem[]>(`/api/jobs/${jobId}/resumes`);
+    return this.http.get<ResumeListItem[]>(`${API}/api/jobs/${jobId}/resumes`);
   }
 
   /** Up to 20 PDFs; form field name must match API: `files` */
@@ -136,43 +139,43 @@ export class JobsService {
     for (const f of files) {
       fd.append('files', f, f.name);
     }
-    return this.http.post<BulkResumeUploadResponse>(`/api/jobs/${jobId}/resumes`, fd);
+    return this.http.post<BulkResumeUploadResponse>(`${API}/api/jobs/${jobId}/resumes`, fd);
   }
 
   /** Viewer: submit or replace own PDF for this job (single file, field name `file`) */
   uploadMyResume(jobId: number, file: File): Observable<ResumeListItem> {
     const fd = new FormData();
     fd.append('file', file, file.name);
-    return this.http.post<ResumeListItem>(`/api/jobs/${jobId}/my-resume`, fd);
+    return this.http.post<ResumeListItem>(`${API}/api/jobs/${jobId}/my-resume`, fd);
   }
 
   deleteResume(jobId: number, resumeId: number): Observable<void> {
-    return this.http.delete<void>(`/api/jobs/${jobId}/resumes/${resumeId}`);
+    return this.http.delete<void>(`${API}/api/jobs/${jobId}/resumes/${resumeId}`);
   }
 
   /** Trigger screening for all resumes under a job */
   screenResumes(jobId: number, method: 'tfidf' | 'ai' = 'tfidf'): Observable<ScreeningResponse> {
     const params = new HttpParams().set('method', method);
-    return this.http.post<ScreeningResponse>(`/api/jobs/${jobId}/screen`, {}, { params });
+    return this.http.post<ScreeningResponse>(`${API}/api/jobs/${jobId}/screen`, {}, { params });
   }
 
   /** Get ranked candidates sorted by score descending */
   getRankings(jobId: number): Observable<RankedCandidate[]> {
-    return this.http.get<RankedCandidate[]>(`/api/jobs/${jobId}/rankings`);
+    return this.http.get<RankedCandidate[]>(`${API}/api/jobs/${jobId}/rankings`);
   }
 
   /** Get resume detail with full score breakdown */
   getResumeDetail(resumeId: number): Observable<ResumeDetail> {
-    return this.http.get<ResumeDetail>(`/api/resumes/${resumeId}`);
+    return this.http.get<ResumeDetail>(`${API}/api/resumes/${resumeId}`);
   }
 
   /** HRAdmin: update shortlist / reject / review decision on a resume */
   updateResumeStatus(resumeId: number, hrStatus: string, notes: string | null): Observable<void> {
-    return this.http.put<void>(`/api/resumes/${resumeId}/status`, { hrStatus, notes });
+    return this.http.put<void>(`${API}/api/resumes/${resumeId}/status`, { hrStatus, notes });
   }
 
   /** HRAdmin: download ranked candidates as Excel file */
   exportRankings(jobId: number): Observable<Blob> {
-    return this.http.get(`/api/jobs/${jobId}/rankings/export`, { responseType: 'blob' });
+    return this.http.get(`${API}/api/jobs/${jobId}/rankings/export`, { responseType: 'blob' });
   }
 }

@@ -2,9 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 const TOKEN_KEY = 'rs_token';
 const USER_KEY = 'rs_user';
+const API = environment.apiUrl;
 
 export interface AuthResponse {
   token: string;
@@ -27,7 +29,7 @@ export class AuthService {
 
   login(email: string, password: string): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>('/api/auth/login', { email, password })
+      .post<AuthResponse>(`${API}/api/auth/login`, { email, password })
       .pipe(tap((r) => this.persist(r)));
   }
 
@@ -38,7 +40,7 @@ export class AuthService {
     role: string;
   }): Observable<AuthResponse> {
     return this.http
-      .post<AuthResponse>('/api/auth/register', body)
+      .post<AuthResponse>(`${API}/api/auth/register`, body)
       .pipe(tap((r) => this.persist(r)));
   }
 
