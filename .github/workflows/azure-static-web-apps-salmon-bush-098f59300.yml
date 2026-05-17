@@ -31,6 +31,7 @@ jobs:
           app_location: "/Project/resume-screening-ui" # App source code path
           api_location: "" # Api source code path - optional
           output_location: "dist/resume-screening-ui/browser" # Built app content directory - optional
+          app_build_command: "npx ng build --configuration production"
           ###### End of Repository/Build Configurations ######
 
   close_pull_request_job:
