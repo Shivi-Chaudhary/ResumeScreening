@@ -30,22 +30,22 @@ namespace ResumeScreening.API.Services
         public async Task<int> ScoreAllResumesForJobAsync(int jobId, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(_apiKey) || _apiKey.StartsWith("REPLACE"))
-                throw new InvalidOperationException("Gemini API key is not configured. Set GeminiAI:ApiKey in appsettings.json.");
+                throw new InvalidOperationException("AI screening service is not configured. Please contact the administrator.");
 
             var job = await _db.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.Id == jobId, ct);
             if (job == null)
-                throw new InvalidOperationException("Job not found.");
+                throw new InvalidOperationException("The selected job could not be found.");
 
             var jdText = job.JdExtractedText ?? job.Description;
             if (string.IsNullOrWhiteSpace(jdText))
-                throw new InvalidOperationException("Job has no description or extracted JD text to screen against.");
+                throw new InvalidOperationException("Please add a job description before running AI screening.");
 
             var resumes = await _db.Resumes
                 .Where(r => r.JobId == jobId && r.ExtractedText != null && r.ExtractedText != "")
                 .ToListAsync(ct);
 
             if (resumes.Count == 0)
-                throw new InvalidOperationException("No resumes with extracted text found for this job.");
+                throw new InvalidOperationException("No resumes available to screen. Please upload resumes first.");
 
             var existingScores = await _db.ScoreResults
                 .Where(s => s.JobId == jobId)
@@ -84,7 +84,10 @@ namespace ResumeScreening.API.Services
             _logger.LogInformation("Job {JobId}: AI scored {Count}/{Total} resumes using Gemini.", jobId, scored, resumes.Count);
 
             if (scored == 0 && lastError != null)
-                throw new InvalidOperationException($"Gemini AI failed to score any resumes. Last error: {lastError}");
+            {
+                _logger.LogError("Gemini AI failed to score any resumes. Last error: {Error}", lastError);
+                throw new InvalidOperationException("AI screening could not process any resumes. Please try again or use TF-IDF method instead.");
+            }
 
             return scored;
         }
@@ -150,12 +153,13 @@ namespace ResumeScreening.API.Services
                     if (!response.IsSuccessStatusCode)
                     {
                         _logger.LogError("Gemini retry also failed {Status}: {Body}", response.StatusCode, responseText);
-                        throw new InvalidOperationException($"Gemini API rate limit. Wait a minute and try again. Details: {responseText[..Math.Min(200, responseText.Length)]}");
+                        throw new InvalidOperationException("AI service is temporarily busy. Please wait a minute and try again.");
                     }
                 }
                 else
                 {
-                    throw new InvalidOperationException($"Gemini API returned {response.StatusCode}. Details: {responseText[..Math.Min(200, responseText.Length)]}");
+                    _logger.LogError("Gemini API returned {Status}. Details: {Body}", response.StatusCode, responseText[..Math.Min(200, responseText.Length)]);
+                    throw new InvalidOperationException("AI screening encountered an error. Please try again later.");
                 }
             }
 

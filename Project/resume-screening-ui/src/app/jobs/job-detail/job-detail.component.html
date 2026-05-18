@@ -319,9 +319,9 @@
           </div>
           <p class="method-hint muted small">
             @if (screeningMethod === 'tfidf') {
-              TF-IDF uses keyword frequency matching — fast, runs locally, no API key needed.
+              TF-IDF uses keyword frequency matching — fast and runs locally.
             } @else {
-              Gemini AI uses Google's language model for context-aware scoring — slower but more accurate. Requires API key in appsettings.
+              Gemini AI uses context-aware scoring — slower but more accurate.
             }
           </p>
 
@@ -329,7 +329,13 @@
             <div class="progress-container">
               <div class="progress-bar" [style.width.%]="screeningProgress()"></div>
             </div>
-            <p class="muted small progress-text">Analyzing resumes with TF-IDF scoring engine…</p>
+            <p class="muted small progress-text">
+              @if (screeningMethod === 'tfidf') {
+                Analyzing resumes with TF-IDF scoring engine…
+              } @else {
+                Analyzing resumes with Gemini AI — this may take a moment…
+              }
+            </p>
           }
 
           @if (screeningMsg()) {

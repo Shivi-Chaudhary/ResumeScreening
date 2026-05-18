@@ -196,7 +196,7 @@ export class JobDetailComponent implements OnInit {
       error: (err) => {
         this.stopScreeningAnim();
         this.screening.set(false);
-        this.screeningMsg.set(err?.error?.message ?? 'Screening failed.');
+        this.screeningMsg.set(err?.error?.message ?? 'Screening failed. Please try again.');
       },
     });
   }
