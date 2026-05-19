@@ -2,11 +2,11 @@
 
 <div align="center">
 
-![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
-![Angular](https://img.shields.io/badge/Angular-17-DD0031?style=for-the-badge&logo=angular&logoColor=white)
+![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![Angular](https://img.shields.io/badge/Angular-19-DD0031?style=for-the-badge&logo=angular&logoColor=white)
 ![Azure](https://img.shields.io/badge/Azure-Cloud-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)
 ![SQL Server](https://img.shields.io/badge/SQL_Server-Azure_SQL-CC2927?style=for-the-badge&logo=microsoftsqlserver&logoColor=white)
-![ML.NET](https://img.shields.io/badge/ML.NET-TF--IDF-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![Gemini AI](https://img.shields.io/badge/Gemini-AI_Scoring-4285F4?style=for-the-badge&logo=google&logoColor=white)
 ![JWT](https://img.shields.io/badge/Auth-JWT_Bearer-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)
 
 **A full-stack cloud SaaS application that automates candidate screening using AI-powered resume scoring.**  
@@ -24,7 +24,7 @@ Manually reviewing hundreds of resumes for a job posting is time-consuming and i
 
 - Post job openings with a Job Description (JD) file
 - Upload candidate resumes in bulk (PDF)
-- **Automatically rank candidates** using an AI scoring engine built with **ML.NET TF-IDF keyword matching**
+- **Automatically rank candidates** using dual AI screening — **TF-IDF keyword matching** and **Google Gemini AI** context-aware scoring
 - Shortlist, review, and export results — all from a clean Angular dashboard
 
 The entire application is **cloud-hosted on Microsoft Azure**, demonstrating real-world SaaS architecture patterns.
@@ -42,18 +42,16 @@ The entire application is **cloud-hosted on Microsoft Azure**, demonstrating rea
 - ✅ Export shortlisted candidates to Excel (.xlsx)
 - ✅ Dashboard with summary stats and score distribution chart
 
-### 👁️ For Viewers (Read-Only)
-- ✅ View all active job postings
-- ✅ View candidate rankings and score breakdowns
-- ✅ No modification access — safe for non-HR stakeholders
+### 👁️ For Viewers (Candidates)
+- ✅ View assigned job posting
+- ✅ View own score, rank, and score breakdown via "My Status" tab
+- ✅ Read-only access — no modification permissions
 
-### 🤖 AI Scoring Engine
-- TF-IDF keyword extraction from Job Description text
-- Keyword overlap scoring normalised to 0–100
-- Bonus scoring rules:
-  - +10 for years-of-experience detection
-  - +15 for skills section keyword match
-  - Degree level weighting
+### 🤖 Dual AI Scoring Engine
+- **TF-IDF Method** — Keyword frequency matching, fast, runs locally
+- **Gemini AI Method** — Google Gemini API for context-aware semantic scoring
+- Score breakdown: Keyword Match (0-60) + Experience (0-10) + Skills (0-15) + Education (0-15)
+- Color-coded results: 🟢 Green (70+) · 🟡 Amber (40-69) · 🔴 Red (below 40)
 - Real-time screening progress with animated UI feedback
 
 ---
@@ -63,31 +61,31 @@ The entire application is **cloud-hosted on Microsoft Azure**, demonstrating rea
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                     CLIENT LAYER                            │
-│              Angular 17 SPA (Azure Static Web Apps)         │
+│              Angular 19 SPA (Azure Static Web Apps)         │
 │    Dashboard · Jobs · Resume Upload · Rankings · Export     │
 └────────────────────────┬────────────────────────────────────┘
                          │ HTTPS / REST API
 ┌────────────────────────▼────────────────────────────────────┐
 │                      API LAYER                              │
-│            .NET 8 Web API (Azure App Service)               │
+│            .NET 9 Web API (Azure App Service)               │
 │    Auth · Jobs · Resumes · Scoring · Dashboard · Export     │
 │                  JWT Bearer Authentication                  │
 └───────┬──────────────────────┬──────────────────────────────┘
         │                      │
 ┌───────▼───────┐    ┌─────────▼────────┐    ┌───────────────┐
-│  Azure Blob   │    │    Azure SQL     │    │   ML.NET      │
-│   Storage     │    │    Database      │    │  Scoring      │
-│               │    │                  │    │   Engine      │
+│  Azure Blob   │    │    Azure SQL     │    │  AI Scoring   │
+│   Storage     │    │    Database      │    │   Engine      │
+│               │    │                  │    │               │
 │  PDF Resumes  │    │  Users · Jobs    │    │  TF-IDF +     │
-│  JD Files     │    │  Resumes · Scores│    │  Weighting    │
+│  JD Files     │    │  Resumes · Scores│    │  Gemini AI    │
 └───────────────┘    └──────────────────┘    └───────────────┘
 ```
 
 ### Data Flow — Resume Screening
 ```
 HR uploads PDFs → Azure Blob Storage
-                → PdfPig extracts text → Azure SQL (ExtractedText)
-                → ML.NET TF-IDF scores against JD
+                → iText7 extracts text → Azure SQL (ExtractedText)
+                → TF-IDF or Gemini AI scores against JD
                 → ScoreResults persisted → Ranked list returned to UI
 ```
 
@@ -97,11 +95,11 @@ HR uploads PDFs → Azure Blob Storage
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Frontend** | Angular 17 + Angular Material | HR dashboard, upload UI, rankings |
-| **Backend** | .NET 8 Web API | REST APIs, business logic, auth |
-| **AI Engine** | ML.NET + TF-IDF | Keyword extraction, JD-to-resume scoring |
-| **PDF Parsing** | PdfPig (NuGet) | Extract plain text from uploaded PDFs |
-| **ORM** | EF Core 8 | Code-first migrations, repository pattern |
+| **Frontend** | Angular 19, TypeScript, SCSS | HR dashboard, upload UI, rankings |
+| **Backend** | .NET 9 Web API, C# | REST APIs, business logic, auth |
+| **AI Engine** | TF-IDF + Google Gemini API | Dual scoring: keyword matching & context-aware AI |
+| **PDF Parsing** | iText7 (NuGet) | Extract plain text from uploaded PDFs |
+| **ORM** | EF Core 9 | Code-first migrations, repository pattern |
 | **Database** | Azure SQL (SQL Server) | Structured relational data |
 | **File Storage** | Azure Blob Storage | Secure PDF file storage |
 | **Auth** | JWT Bearer Tokens | Role-based access (HRAdmin / Viewer) |
@@ -119,22 +117,14 @@ HR uploads PDFs → Azure Blob Storage
 ```
 ResumeScreening/
 │
-├── ResumeScreening.API/                  # .NET 8 Web API
+├── ResumeScreening.API/                  # .NET 9 Web API
 │   ├── Controllers/
 │   │   ├── AuthController.cs             # Register, Login
-│   │   ├── JobController.cs              # Job CRUD + JD upload
-│   │   ├── ResumeController.cs           # Bulk upload, status update
-│   │   └── DashboardController.cs        # Stats summary
+│   │   └── JobsController.cs             # Jobs, Resumes, Screening, Export
 │   ├── Services/
-│   │   ├── AuthService.cs
-│   │   ├── BlobService.cs                # Azure Blob Storage operations
-│   │   ├── ScoringService.cs             # ML.NET TF-IDF engine
-│   │   ├── JobService.cs
-│   │   └── ResumeService.cs
-│   ├── Repositories/
-│   │   ├── IJobRepo.cs / JobRepo.cs
-│   │   ├── IResumeRepo.cs / ResumeRepo.cs
-│   │   └── IScoreRepo.cs / ScoreRepo.cs
+│   │   ├── AiScoringService.cs           # Google Gemini AI scoring
+│   │   ├── TfIdfScoringService.cs        # TF-IDF keyword scoring
+│   │   └── BlobService.cs                # Azure Blob Storage operations
 │   ├── Models/                           # EF Core entities
 │   │   ├── User.cs
 │   │   ├── Job.cs
@@ -151,13 +141,11 @@ ResumeScreening/
 │   │   └── PdfExtractor.cs
 │   └── appsettings.json
 │
-├── resume-screening-ui/                  # Angular 17 SPA
+├── resume-screening-ui/                  # Angular 19 SPA
 │   └── src/app/
 │       ├── auth/                         # Login, Register + AuthGuard
 │       ├── jobs/                         # JobList, JobCreate, JobDetail
-│       ├── resumes/                      # Upload, List, Detail
-│       ├── dashboard/                    # Stats + Chart.js
-│       └── core/                         # HttpInterceptor, ApiService
+│       └── core/                         # AuthService, JobsService, Interceptor
 │
 ├── ResumeScreening.Tests/                # xUnit test project
 │   └── ScoringServiceTests.cs
@@ -171,7 +159,7 @@ ResumeScreening/
 
 ### Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8)
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9)
 - [Node.js 18+](https://nodejs.org/) and Angular CLI (`npm install -g @angular/cli`)
 - [SQL Server](https://www.microsoft.com/en-us/sql-server/) or Azure SQL instance
 - [Azure Storage Account](https://portal.azure.com/) (for Blob Storage)
@@ -182,8 +170,8 @@ ResumeScreening/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/shiviichaudhary/ai-resume-screening.git
-cd ai-resume-screening
+git clone https://github.com/Shivi-Chaudhary/ResumeScreening.git
+cd ResumeScreening
 ```
 
 ---
@@ -212,6 +200,10 @@ Create a `appsettings.Development.json` file (do **not** commit this — it's in
     "Issuer": "ResumeScreeningAPI",
     "Audience": "ResumeScreeningClient",
     "ExpiryHours": 8
+  },
+  "GeminiAI": {
+    "ApiKey": "YOUR_GEMINI_API_KEY",
+    "Model": "gemini-2.0-flash"
   }
 }
 ```
@@ -317,6 +309,8 @@ Set these in **Configuration → Application Settings** in the Azure Portal:
 | `JwtSettings__SecretKey` | Your JWT secret (32+ chars) |
 | `JwtSettings__Issuer` | `ResumeScreeningAPI` |
 | `JwtSettings__Audience` | `ResumeScreeningClient` |
+| `GeminiAI__ApiKey` | Your Gemini API key |
+| `GeminiAI__Model` | `gemini-2.0-flash` |
 
 ---
 
@@ -397,9 +391,8 @@ dotnet test --verbosity normal
 | `Microsoft.EntityFrameworkCore.SqlServer` | EF Core with SQL Server |
 | `Microsoft.AspNetCore.Authentication.JwtBearer` | JWT authentication middleware |
 | `Azure.Storage.Blobs` | Azure Blob Storage SDK |
-| `UglyToad.PdfPig` | PDF text extraction |
-| `Microsoft.ML` | ML.NET for TF-IDF |
-| `EPPlus` | Excel export |
+| `itext7` | PDF text extraction |
+| `ClosedXML` | Excel export |
 | `Swashbuckle.AspNetCore` | Swagger/OpenAPI UI |
 | `xunit` + `Moq` | Unit testing + mocking |
 
@@ -407,9 +400,9 @@ dotnet test --verbosity normal
 
 | Package | Purpose |
 |---------|---------|
-| `@angular/material` | UI components |
-| `chart.js` | Score distribution chart |
-| `ng2-file-upload` | Drag-and-drop upload |
+| `Angular 19` | Component-based SPA framework |
+| `TypeScript` | Typed JavaScript |
+| `SCSS` | Styled components |
 
 ---
 
